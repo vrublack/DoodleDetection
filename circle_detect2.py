@@ -5,6 +5,33 @@ import cv2
 import os
 
 
+def add_alpha(img):
+    b_channel, g_channel, r_channel = cv2.split(img)
+    alpha_channel = np.ones((img.shape[0], img.shape[1]), dtype=np.uint8) * 255  # creating a dummy alpha channel image.
+    img_RGBA = cv2.merge((b_channel, g_channel, r_channel, alpha_channel))
+    return img_RGBA
+
+
+def crop(image, contour):
+    image = add_alpha(image)
+    mask = np.zeros(image.shape, dtype=np.uint8)
+    corners = np.zeros((1, contour.shape[0], 2), dtype=np.int32)
+    for i in range(contour.shape[0]):
+        corners[0][i][0] = contour[i][0][0]
+        corners[0][i][1] = contour[i][0][1]
+
+    # fill the ROI so it doesn't get wiped out when the mask is applied
+    channel_count = image.shape[2]  # i.e. 3 or 4 depending on your image
+    ignore_mask_color = (255,) * channel_count
+    cv2.fillPoly(mask, corners, ignore_mask_color)
+
+    # apply the mask
+    masked_image = cv2.bitwise_and(image, mask)
+
+    # save the result
+    cv2.imwrite('image_masked.png', masked_image)
+
+
 def graph(orig_image, image, circles):
     # ensure at least some circles were found
     if circles is not None:
@@ -20,14 +47,14 @@ def graph(orig_image, image, circles):
             edge_detected_image = cv2.Canny(bilateral_filtered_image, 75, 200)
             _, contours, hierarchy = cv2.findContours(edge_detected_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            #cv2.imshow("output", cropped_image)
-            #cv2.waitKey(0)
+            # cv2.imshow("output", cropped_image)
+            # cv2.waitKey(0)
 
             # just take contour with greatest area
             max_approx = (None, -1)
 
             for contour in contours:
-                approx = cv2.approxPolyDP(contour, 0.01 * cv2.arcLength(contour, True), True)
+                approx = cv2.approxPolyDP(contour, 0.005 * cv2.arcLength(contour, True), True)
                 area = cv2.contourArea(approx)
 
                 if area > max_approx[1]:
@@ -38,6 +65,8 @@ def graph(orig_image, image, circles):
                 approx[i, 0, 0] += x - radius
                 approx[i, 0, 1] += y - radius
             contour_list.append(approx)
+
+            crop(orig_image, approx)
 
             # draw the circle in the output image, then draw a rectangle
             # corresponding to the center of the circle
@@ -138,7 +167,8 @@ images = []
 labels = []
 
 # only look at ones that work for now
-keep_indexes = [3, 6, 8, 11, 12, 14, 17, 20, 24, 28, 32, 33, 37, 38, 40, 42, 48, 51, 52, 61]
+# keep_indexes = [3, 6, 8, 11, 12, 14, 17, 20, 24, 28, 32, 33, 37, 38, 40, 42, 48, 51, 52, 61]
+keep_indexes = [48]
 for i in range(len(orig_images)):
     if i in keep_indexes:
         images.append(orig_images[i])
