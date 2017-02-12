@@ -249,8 +249,8 @@ def shift_left(img, x):
 def to_imgs(body, wheel1, wheel1_center, wheel1_offset, wheel2, wheel2_center, wheel2_offset):
     iterations = 50
     for i in range(iterations):
-        wheel1_rot = rotateImage(wheel1, wheel1_center, 500 / iterations * i)
-        wheel2_rot = rotateImage(wheel2, wheel2_center, 500 / iterations * i)
+        wheel1_rot = rotateImage(wheel1, wheel1_center, 1000 / iterations * i)
+        wheel2_rot = rotateImage(wheel2, wheel2_center, 1000 / iterations * i)
 
         wheel1_frame = np.zeros((body.shape[0], body.shape[1], 4), dtype=np.uint8)
         wheel1_frame[wheel1_offset[0]:wheel1_offset[0] + wheel1_rot.shape[0],
