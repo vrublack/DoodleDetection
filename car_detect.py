@@ -162,6 +162,51 @@ def filter(circles):
         return circles
 
 
+def graph(image, circles):
+    # ensure at least some circles were found
+    if circles is not None:
+        # convert the (x, y) coordinates and radius of the circles to integers
+        circles = np.round(circles[:]).astype("int")
+        contour_list = []
+        radius = max(int(circles[0][2] * 2), int(circles[1][2] * 1.3))
+        # loop over the (x, y) coordinates and radius of the circles
+        for (x, y, r) in circles:
+            # crop image
+            cropped_image = image[y - radius:y + radius, x - radius:x + radius]
+            bilateral_filtered_image = cv2.bilateralFilter(cropped_image, 5, 175, 175)
+            edge_detected_image = cv2.Canny(bilateral_filtered_image, 75, 200)
+            _, contours, hierarchy = cv2.findContours(edge_detected_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            # cv2.imshow("output", cropped_image)
+            # cv2.waitKey(0)
+
+            # just take contour with greatest area
+            max_approx = (None, -1)
+
+            for contour in contours:
+                approx = cv2.approxPolyDP(contour, 0.005 * cv2.arcLength(contour, True), True)
+                area = cv2.contourArea(approx)
+
+                if area > max_approx[1]:
+                    max_approx = (approx, area)
+
+            approx = max_approx[0]
+            for i in range(approx.shape[0]):
+                approx[i, 0, 0] += x - radius
+                approx[i, 0, 1] += y - radius
+            contour_list.append(approx)
+
+            # draw the circle in the output image, then draw a rectangle
+            # corresponding to the center of the circle
+            cv2.circle(image, (x, y), radius, (0, 255, 0), 4)
+            cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
+
+        # show the output image
+        cv2.drawContours(image, contour_list, -1, (255, 0, 0), 2)
+        cv2.imshow("output", image)
+        cv2.waitKey(0)
+
+
 def process_image(image, output_index):
     output = image.copy()
     gray = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
@@ -176,6 +221,8 @@ def process_image(image, output_index):
     circles = circles[0]
 
     circles = filter(circles)
+
+    # graph(image, circles)
 
     if len(circles) < 2:
         print('Fewer than two circles detected!')
