@@ -5,6 +5,26 @@ import cv2
 import os
 
 
+def resize_contour(contour, factor):
+    M = cv2.moments(contour)
+    center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+
+    scaled_contour = np.copy(contour)
+
+    for i in range(scaled_contour.shape[0]):
+        scaled_contour[i][0][0] = int(contour[i][0][0] * factor)
+        scaled_contour[i][0][1] = int(contour[i][0][1] * factor)
+
+    M2 = cv2.moments(scaled_contour)
+    new_center = (int(M2["m10"] / M2["m00"]), int(M2["m01"] / M2["m00"]))
+
+    # maintains center
+    for i in range(scaled_contour.shape[0]):
+        scaled_contour[i][0][0] -= new_center[0] - center[0]
+        scaled_contour[i][0][1] -= new_center[1] - center[1]
+
+    return scaled_contour
+
 def add_alpha(img):
     b_channel, g_channel, r_channel = cv2.split(img)
     alpha_channel = np.ones((img.shape[0], img.shape[1]), dtype=np.uint8) * 255  # creating a dummy alpha channel image.
@@ -56,13 +76,14 @@ def extract_wheels(image, circles):
             max_approx = (None, -1)
 
             for contour in contours:
-                approx = cv2.approxPolyDP(contour, 0.005 * cv2.arcLength(contour, True), True)
+                approx = cv2.approxPolyDP(contour, 0.001 * cv2.arcLength(contour, True), True)
                 area = cv2.contourArea(approx)
 
                 if area > max_approx[1]:
                     max_approx = (approx, area)
 
             approx = max_approx[0]
+            approx = resize_contour(approx, 1.05)
             contour_list.append(approx)
 
             crop(cropped_image, approx, 'wheel_{}.png'.format(j))
