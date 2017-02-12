@@ -145,6 +145,8 @@ def extract_wheels(image, circles, output_index=0):
 
     to_imgs(image, wheels[0][0], wheels[0][1], wheel_offsets[0], wheels[1][0], wheels[1][1], wheel_offsets[1])
 
+    # make_gif()
+
 
 def check_circle(c, box):
     # is center of circle in box?
@@ -246,8 +248,18 @@ def shift_left(img, x):
     return cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), borderValue=(255, 255, 255, 255))
 
 
+def make_gif():
+    import imageio
+
+    images = []
+    dir = 'animation'
+    for filename in os.listdir(dir):
+        images.append(imageio.imread(os.path.join(dir, filename)))
+    imageio.mimsave('car.gif', images)
+
+
 def to_imgs(body, wheel1, wheel1_center, wheel1_offset, wheel2, wheel2_center, wheel2_offset):
-    iterations = 50
+    iterations = 25
     for i in range(iterations):
         wheel1_rot = rotateImage(wheel1, wheel1_center, 1000 / iterations * i)
         wheel2_rot = rotateImage(wheel2, wheel2_center, 1000 / iterations * i)
