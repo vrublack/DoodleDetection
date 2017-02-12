@@ -52,7 +52,8 @@ def fill(img, contour, color):
 
 def crop(image, contour, output_fname):
     # paint wheel
-    flood_fill(image, contour_center(contour), wheel_color)
+    center = contour_center(contour)
+    flood_fill(image, center, wheel_color)
 
     image = add_alpha(image)
     mask = np.zeros(image.shape, dtype=np.uint8)
@@ -67,6 +68,8 @@ def crop(image, contour, output_fname):
 
     # save the result
     cv2.imwrite(output_fname, masked_image)
+    with open(output_fname + '_.info', 'w') as info:
+        info.write('{}x{}'.format(center[0], center[1]))
 
 
 def flood_fill(img, seed, color):
@@ -287,7 +290,7 @@ labels = []
 
 # only look at ones that work for now
 keep_indexes = [3, 6, 8, 11, 12, 14, 17, 20, 24, 28, 32, 33, 37, 38, 40, 42, 48, 51, 52, 61]
-#keep_indexes = [48]
+# keep_indexes = [48]
 for i in range(len(orig_images)):
     if i in keep_indexes:
         images.append(orig_images[i])
