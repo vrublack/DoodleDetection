@@ -4,13 +4,16 @@ import argparse
 import cv2
 import os
 
+def check_circle(c, box):
+    # is center of circle in box?
+    return box[0] <= c[0] <= box[2] and box[1] <= c[1] <= box[3]
 
 def check_model_output(circles, label):
     if circles is None or len(circles[0]) != 2:
         return False
-    else:
-        return True
 
+    return check_circle(circles[0][0], label[0]) and check_circle(circles[0][1], label[1]) \
+           or check_circle(circles[0][0], label[1]) and check_circle(circles[0][1], label[0])
 
 def validate_using_params(images, labels, param1, param2, param3):
     correct = 0
