@@ -4,6 +4,15 @@ import argparse
 import cv2
 import os
 
+# opencv uses BGR
+wheel_color = (171, 186, 211)[::-1]
+body_color = (255, 0, 0)[::-1]
+
+
+def contour_center(contour):
+    M2 = cv2.moments(contour)
+    return (int(M2["m10"] / M2["m00"]), int(M2["m01"] / M2["m00"]))
+
 
 def resize_contour(contour, factor):
     M = cv2.moments(contour)
@@ -42,6 +51,9 @@ def fill(img, contour, color):
 
 
 def crop(image, contour, output_fname):
+    # paint wheel
+    flood_fill(image, contour_center(contour), wheel_color)
+
     image = add_alpha(image)
     mask = np.zeros(image.shape, dtype=np.uint8)
 
@@ -57,6 +69,11 @@ def crop(image, contour, output_fname):
     cv2.imwrite(output_fname, masked_image)
 
 
+def flood_fill(img, seed, color):
+    blank_image = np.zeros((img.shape[0] + 2, img.shape[1] + 2), dtype=np.uint8)
+    cv2.floodFill(img, blank_image, seed, color)
+
+
 def extract_wheels(image, circles):
     image = image.copy()
     # ensure at least some circles were found
@@ -66,6 +83,8 @@ def extract_wheels(image, circles):
         contour_list = []
         radius = max(int(circles[0][2] * 2), int(circles[1][2] * 1.3))
         cropped_images = []
+        centers = []
+        approxims = []
         # loop over the (x, y) coordinates and radius of the circles
         for j, (x, y, r) in enumerate(circles):
             # crop image
@@ -96,7 +115,23 @@ def extract_wheels(image, circles):
             for i in range(approx.shape[0]):
                 approx[i, 0, 0] += x - radius
                 approx[i, 0, 1] += y - radius
-            fill(image, approx, (255, 255, 255))
+            # fill(image, approx, (255, 255, 255))
+            center = contour_center(approx)
+            centers.append(center)
+
+            approxims.append(approx)
+
+        # paint car body
+        # estimate body center position based on wheel proportions
+        x_dist = abs(centers[0][0] - centers[1][0])
+        x_avg = centers[0][0] / 2 + centers[1][0] / 2
+        y_avg = centers[0][1] / 2 + centers[1][1] / 2
+        body_center = (x_avg, int(y_avg - x_dist * 0.3))
+        flood_fill(image, body_center, body_color)
+
+        # remove wheels from car
+        fill(image, approxims[0], (255, 255, 255))
+        fill(image, approxims[1], (255, 255, 255))
 
     cv2.imwrite('car_without_wheels.png', image)
 
