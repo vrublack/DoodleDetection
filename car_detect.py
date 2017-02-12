@@ -73,6 +73,8 @@ def crop(image, contour, output_fname):
     with open(output_fname + '_.info', 'w') as info:
         info.write('{}x{}'.format(center[0], center[1]))
 
+    return masked_image, center
+
 
 def flood_fill(img, seed, color):
     blank_image = np.zeros((img.shape[0] + 2, img.shape[1] + 2), dtype=np.uint8)
@@ -88,10 +90,13 @@ def extract_wheels(image, circles, output_index=0):
     cropped_images = []
     centers = []
     approxims = []
+    wheels = []
+    wheel_offsets = []
     # loop over the (x, y) coordinates and radius of the circles
     for j, (x, y, r) in enumerate(circles):
         # crop image
         cropped_image = image[y - radius:y + radius, x - radius:x + radius]
+        wheel_offsets.append((y - radius, x - radius))
         cropped_images.append(cropped_image)
         bilateral_filtered_image = cv2.bilateralFilter(cropped_image, 5, 175, 175)
         edge_detected_image = cv2.Canny(bilateral_filtered_image, 75, 200)
@@ -113,7 +118,7 @@ def extract_wheels(image, circles, output_index=0):
         approx = max_approx[0]
         approx = resize_contour(approx, 1.1)
         contour_list.append(approx)
-        crop(cropped_image, approx, 'wheel_{}_{}.png'.format(j, output_index))
+        wheels.append(crop(cropped_image, approx, 'wheel_{}_{}.png'.format(j, output_index)))
 
         for i in range(approx.shape[0]):
             approx[i, 0, 0] += x - radius
@@ -137,6 +142,8 @@ def extract_wheels(image, circles, output_index=0):
     fill(image, approxims[1], (255, 255, 255))
 
     cv2.imwrite('car_without_wheels_{}.png'.format(output_index), image)
+
+    to_imgs(image, wheels[0][0], wheels[0][1], wheel_offsets[0], wheels[1][0], wheels[1][1], wheel_offsets[1])
 
 
 def check_circle(c, box):
@@ -205,6 +212,51 @@ def graph(image, circles):
         cv2.drawContours(image, contour_list, -1, (255, 0, 0), 2)
         cv2.imshow("output", image)
         cv2.waitKey(0)
+
+
+def rotateImage(image, center, angle):
+    rot_mat = cv2.getRotationMatrix2D(center, angle, 1)
+    result = cv2.warpAffine(image, rot_mat, (image.shape[0], image.shape[1]))
+    return result
+
+
+def blend_transparent(background, img_trans):
+    # Split out the transparency mask from the colour info
+    overlay_img = img_trans[:, :, :3]  # Grab the BRG planes
+    overlay_mask = img_trans[:, :, 3:]  # And the alpha plane
+
+    # Again calculate the inverse mask
+    background_mask = 255 - overlay_mask
+
+    # Turn the masks into three channel, so we can use them as weights
+    overlay_mask = cv2.cvtColor(overlay_mask, cv2.COLOR_GRAY2BGR)
+    background_mask = cv2.cvtColor(background_mask, cv2.COLOR_GRAY2BGR)
+
+    # Create a masked out face image, and masked out overlay
+    # We convert the images to floating point in range 0.0 - 1.0
+    face_part = (background * (1 / 255.0)) * (background_mask * (1 / 255.0))
+    overlay_part = (overlay_img * (1 / 255.0)) * (overlay_mask * (1 / 255.0))
+
+    # And finally just add them together, and rescale it back to an 8bit integer image
+    return np.uint8(cv2.addWeighted(face_part, 255.0, overlay_part, 255.0, 0.0))
+
+
+def to_imgs(body, wheel1, wheel1_center, wheel1_offset, wheel2, wheel2_center, wheel2_offset):
+    for i in range(50):
+        wheel1_rot = rotateImage(wheel1, wheel1_center, 10 * i)
+        wheel2_rot = rotateImage(wheel2, wheel2_center, 10 * i)
+
+        wheel1_frame = np.zeros((body.shape[0], body.shape[1], 4), dtype=np.uint8)
+        wheel1_frame[wheel1_offset[0]:wheel1_offset[0] + wheel1_rot.shape[0],
+        wheel1_offset[1]: wheel1_offset[1] + wheel1_rot.shape[1]] = wheel1_rot
+        merged = blend_transparent(body, wheel1_frame)
+
+        wheel2_frame = np.zeros((body.shape[0], body.shape[1], 4), dtype=np.uint8)
+        wheel2_frame[wheel2_offset[0]:wheel2_offset[0] + wheel2_rot.shape[0],
+        wheel2_offset[1]: wheel2_offset[1] + wheel2_rot.shape[1]] = wheel2_rot
+        merged = blend_transparent(merged, wheel2_frame)
+
+        cv2.imwrite('animation/rot_{}.png'.format(i), merged)
 
 
 def process_image(image, output_index):
