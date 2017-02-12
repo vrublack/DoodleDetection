@@ -98,7 +98,6 @@ def extract_wheels(image, circles):
                 approx[i, 0, 1] += y - radius
             fill(image, approx, (255, 255, 255))
 
-
     cv2.imwrite('car_without_wheels.png', image)
 
 
