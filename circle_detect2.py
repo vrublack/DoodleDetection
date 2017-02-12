@@ -12,7 +12,7 @@ def add_alpha(img):
     return img_RGBA
 
 
-def crop(image, contour):
+def crop(image, contour, output_fname):
     image = add_alpha(image)
     mask = np.zeros(image.shape, dtype=np.uint8)
     corners = np.zeros((1, contour.shape[0], 2), dtype=np.int32)
@@ -29,7 +29,43 @@ def crop(image, contour):
     masked_image = cv2.bitwise_and(image, mask)
 
     # save the result
-    cv2.imwrite('image_masked.png', masked_image)
+    cv2.imwrite(output_fname, masked_image)
+
+
+def extract_wheels(image, circles):
+    # ensure at least some circles were found
+    if circles is not None:
+        # convert the (x, y) coordinates and radius of the circles to integers
+        circles = np.round(circles[:]).astype("int")
+        contour_list = []
+        radius = max(int(circles[0][2] * 2), int(circles[1][2] * 1.3))
+        cropped_images = []
+        # loop over the (x, y) coordinates and radius of the circles
+        for j, (x, y, r) in enumerate(circles):
+            # crop image
+            cropped_image = image[y - radius:y + radius, x - radius:x + radius]
+            cropped_images.append(cropped_image)
+            bilateral_filtered_image = cv2.bilateralFilter(cropped_image, 5, 175, 175)
+            edge_detected_image = cv2.Canny(bilateral_filtered_image, 75, 200)
+            _, contours, hierarchy = cv2.findContours(edge_detected_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            # cv2.imshow("output", cropped_image)
+            # cv2.waitKey(0)
+
+            # just take contour with greatest area
+            max_approx = (None, -1)
+
+            for contour in contours:
+                approx = cv2.approxPolyDP(contour, 0.005 * cv2.arcLength(contour, True), True)
+                area = cv2.contourArea(approx)
+
+                if area > max_approx[1]:
+                    max_approx = (approx, area)
+
+            approx = max_approx[0]
+            contour_list.append(approx)
+
+            crop(cropped_image, approx, 'wheel_{}.png'.format(j))
 
 
 def graph(orig_image, image, circles):
@@ -65,8 +101,6 @@ def graph(orig_image, image, circles):
                 approx[i, 0, 0] += x - radius
                 approx[i, 0, 1] += y - radius
             contour_list.append(approx)
-
-            crop(orig_image, approx)
 
             # draw the circle in the output image, then draw a rectangle
             # corresponding to the center of the circle
@@ -123,6 +157,8 @@ def validate_using_params(images, labels, param1, param2, param3, show_graph):
 
         if show_graph and circles is not None:
             graph(image, output, circles)
+
+        extract_wheels(image, circles)
 
         # print(len(circles))
 
@@ -204,4 +240,4 @@ def optimize():
 
 # optimize()
 
-print(validate_using_params(images, labels, 1.3, 250, 70, True))
+print(validate_using_params(images, labels, 1.3, 250, 70, False))
