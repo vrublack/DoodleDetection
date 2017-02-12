@@ -16,11 +16,12 @@ _, contours, hierarchy = cv2.findContours(edge_detected_image, cv2.RETR_TREE, cv
 
 contour_list = []
 for contour in contours:
-    approx = cv2.approxPolyDP(contour, 0.030 * cv2.arcLength(contour, True), True)
+    approx = cv2.approxPolyDP(contour, 0.035 * cv2.arcLength(contour, True), True)
     area = cv2.contourArea(contour)
     if (len(approx) > 8) & (len(approx) < 23) & (area > 30):
         contour_list.append(contour)
 
-cv2.drawContours(raw_image, contour_list, -1, (255, 0, 0), 2)
-cv2.imshow('Objects Detected', raw_image)
-cv2.waitKey(0)
+    cv2.drawContours(raw_image, [approx], -1, (255, 0, 0), 2)
+    cv2.imshow('Objects Detected', raw_image)
+
+    cv2.waitKey(0)
