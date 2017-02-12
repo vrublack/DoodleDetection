@@ -1,10 +1,24 @@
 import csv
 import os
+import random
 
 import cv2
 from PIL import Image
 
-with open('labels/wheels.txt', 'rU') as inputfile:  # whatever he called it
+random.seed(1)
+
+output_dir = 'lights_train'
+
+if os.path.isdir(output_dir):
+    for root, dirs, files in os.walk(output_dir, topdown=False):
+        for name in files:
+            os.remove(os.path.join(root, name))
+        for name in dirs:
+            os.rmdir(os.path.join(root, name))
+    os.rmdir(output_dir)
+os.mkdir(output_dir)
+
+with open('labels/lights.txt', 'rU') as inputfile:  # whatever he called it
     reader = csv.reader(inputfile)
     dp = list(reader)
 
@@ -19,30 +33,32 @@ def wheelFinder(square):
     imgs = [cv2.imread(os.path.join(directory, filename)) for filename in os.listdir(directory)]
     generated_i = 0
     for img_i in range(len(imgs)):
+        if len(dp[img_i]) == 1:
+            continue
         ##iterate over every pixel
         img = imgs[img_i]
         SQUARE = square
         ##grab the corresponding data points of that file ( back and front wheel  fx1, fy1, fx2, fy2, bx1, bx1, bx2, by2) - list dp
-        for x in range(0, img.shape[0] - SQUARE, 100):
-            for y in range(1, img.shape[1] - SQUARE, 100):
+        for x in range(0, img.shape[0] - SQUARE, 20):
+            for y in range(1, img.shape[1] - SQUARE, 20):
                 # all values dp[a][:5] have to be inside of box, or all values of dp[a][5:]
 
                 # dp: x1, y1, x2, y2, ... (same for wheel 2)
 
                 box = (x, y, x + SQUARE, y + SQUARE)
-                wheel1_p1 = (int(dp[img_i][0]), int(dp[img_i][1]))
-                wheel1_p2 = (int(dp[img_i][2]), int(dp[img_i][3]))
-                wheel2_p1 = (int(dp[img_i][4]), int(dp[img_i][5]))
-                wheel2_p2 = (int(dp[img_i][6]), int(dp[img_i][7]))
+                object_p1 = (int(dp[img_i][0]), int(dp[img_i][1]))
+                object_p2 = (int(dp[img_i][2]), int(dp[img_i][3]))
 
-                wheel1_check = in_box(wheel1_p1, box) and in_box(wheel1_p2, box)
-                wheel2_check = in_box(wheel2_p1, box) and in_box(wheel2_p2, box)
+                check = in_box(object_p1, box) and in_box(object_p2, box)
 
                 cropped = img[y: y + SQUARE, x: x + SQUARE]
 
                 generated_i += 1
-                cv2.imwrite('generated_train/file{}_{}.png'.format(generated_i, wheel1_check or wheel2_check), cropped)
+
+                # don't save every False image
+                if check or random.randint(0, 100) == 0:
+                    cv2.imwrite(os.path.join(output_dir, '{}_file{}.png'.format(check, generated_i)), cropped)
 
 
-#for z in range(300, 400, 50):
-wheelFinder(500)
+for z in range(30, 100, 30):
+    wheelFinder(z)
