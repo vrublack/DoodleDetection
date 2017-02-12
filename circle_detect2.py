@@ -11,11 +11,12 @@ def graph(orig_image, image, circles):
         # convert the (x, y) coordinates and radius of the circles to integers
         circles = np.round(circles[:]).astype("int")
 
+        radius = max(int(circles[0][2] * 1.3), int(circles[1][2] * 1.3))
         # loop over the (x, y) coordinates and radius of the circles
-        for (x, y, r) in circles:
+        for (x, y, r) in circles: 
             # draw the circle in the output image, then draw a rectangle
             # corresponding to the center of the circle
-            cv2.circle(image, (x, y), int(r), (0, 255, 0), 4)
+            cv2.circle(image, (x, y), radius, (0, 255, 0), 4)
             cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
 
         # show the output image
