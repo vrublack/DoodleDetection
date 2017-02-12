@@ -247,9 +247,10 @@ def shift_left(img, x):
 
 
 def to_imgs(body, wheel1, wheel1_center, wheel1_offset, wheel2, wheel2_center, wheel2_offset):
-    for i in range(50):
-        wheel1_rot = rotateImage(wheel1, wheel1_center, 10 * i)
-        wheel2_rot = rotateImage(wheel2, wheel2_center, 10 * i)
+    iterations = 50
+    for i in range(iterations):
+        wheel1_rot = rotateImage(wheel1, wheel1_center, 500 / iterations * i)
+        wheel2_rot = rotateImage(wheel2, wheel2_center, 500 / iterations * i)
 
         wheel1_frame = np.zeros((body.shape[0], body.shape[1], 4), dtype=np.uint8)
         wheel1_frame[wheel1_offset[0]:wheel1_offset[0] + wheel1_rot.shape[0],
@@ -261,7 +262,7 @@ def to_imgs(body, wheel1, wheel1_center, wheel1_offset, wheel2, wheel2_center, w
         wheel2_offset[1]: wheel2_offset[1] + wheel2_rot.shape[1]] = wheel2_rot
         merged = blend_transparent(merged, wheel2_frame)
 
-        shifted = shift_left(merged, 20 * i)
+        shifted = shift_left(merged, 1000 / iterations * i)
 
         cv2.imwrite('animation/rot_{}.png'.format(i), shifted)
 
