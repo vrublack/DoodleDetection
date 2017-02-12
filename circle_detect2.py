@@ -10,17 +10,43 @@ def graph(orig_image, image, circles):
     if circles is not None:
         # convert the (x, y) coordinates and radius of the circles to integers
         circles = np.round(circles[:]).astype("int")
-
-        radius = max(int(circles[0][2] * 1.3), int(circles[1][2] * 1.3))
+        contour_list = []
+        radius = max(int(circles[0][2] * 2), int(circles[1][2] * 1.3))
         # loop over the (x, y) coordinates and radius of the circles
-        for (x, y, r) in circles: 
+        for (x, y, r) in circles:
+            # crop image
+            cropped_image = image[y - radius:y + radius, x - radius:x + radius]
+            bilateral_filtered_image = cv2.bilateralFilter(cropped_image, 5, 175, 175)
+            edge_detected_image = cv2.Canny(bilateral_filtered_image, 75, 200)
+            _, contours, hierarchy = cv2.findContours(edge_detected_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            #cv2.imshow("output", cropped_image)
+            #cv2.waitKey(0)
+
+            # just take contour with greatest area
+            max_approx = (None, -1)
+
+            for contour in contours:
+                approx = cv2.approxPolyDP(contour, 0.01 * cv2.arcLength(contour, True), True)
+                area = cv2.contourArea(approx)
+
+                if area > max_approx[1]:
+                    max_approx = (approx, area)
+
+            approx = max_approx[0]
+            for i in range(approx.shape[0]):
+                approx[i, 0, 0] += x - radius
+                approx[i, 0, 1] += y - radius
+            contour_list.append(approx)
+
             # draw the circle in the output image, then draw a rectangle
             # corresponding to the center of the circle
             cv2.circle(image, (x, y), radius, (0, 255, 0), 4)
             cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
 
         # show the output image
-        cv2.imshow("output", np.hstack([orig_image, image]))
+        cv2.drawContours(image, contour_list, -1, (255, 0, 0), 2)
+        cv2.imshow("output", image)
         cv2.waitKey(0)
 
 
@@ -108,7 +134,6 @@ with open(os.path.join('labels', 'back-wheels.txt')) as f:
         for c in range(4):
             orig_labels[i - 1][1][c] = int(coordinates[c].strip())
 
-
 images = []
 labels = []
 
@@ -147,6 +172,6 @@ def optimize():
     print('Best value {} for params {}, {}, {}'.format(best_result, best_params[0], best_params[1], best_params[2]))
 
 
-#optimize()
+# optimize()
 
 print(validate_using_params(images, labels, 1.3, 250, 70, True))
