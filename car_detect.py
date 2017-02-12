@@ -241,6 +241,11 @@ def blend_transparent(background, img_trans):
     return np.uint8(cv2.addWeighted(face_part, 255.0, overlay_part, 255.0, 0.0))
 
 
+def shift_left(img, x):
+    M = np.float32([[1, 0, -x], [0, 1, 0]])
+    return cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), borderValue=(255, 255, 255, 255))
+
+
 def to_imgs(body, wheel1, wheel1_center, wheel1_offset, wheel2, wheel2_center, wheel2_offset):
     for i in range(50):
         wheel1_rot = rotateImage(wheel1, wheel1_center, 10 * i)
@@ -256,7 +261,9 @@ def to_imgs(body, wheel1, wheel1_center, wheel1_offset, wheel2, wheel2_center, w
         wheel2_offset[1]: wheel2_offset[1] + wheel2_rot.shape[1]] = wheel2_rot
         merged = blend_transparent(merged, wheel2_frame)
 
-        cv2.imwrite('animation/rot_{}.png'.format(i), merged)
+        shifted = shift_left(merged, 20 * i)
+
+        cv2.imwrite('animation/rot_{}.png'.format(i), shifted)
 
 
 def process_image(image, output_index):
