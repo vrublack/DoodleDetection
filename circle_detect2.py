@@ -25,6 +25,7 @@ def resize_contour(contour, factor):
 
     return scaled_contour
 
+
 def add_alpha(img):
     b_channel, g_channel, r_channel = cv2.split(img)
     alpha_channel = np.ones((img.shape[0], img.shape[1]), dtype=np.uint8) * 255  # creating a dummy alpha channel image.
@@ -32,18 +33,22 @@ def add_alpha(img):
     return img_RGBA
 
 
-def crop(image, contour, output_fname):
-    image = add_alpha(image)
-    mask = np.zeros(image.shape, dtype=np.uint8)
+def fill(img, contour, color):
     corners = np.zeros((1, contour.shape[0], 2), dtype=np.int32)
     for i in range(contour.shape[0]):
         corners[0][i][0] = contour[i][0][0]
         corners[0][i][1] = contour[i][0][1]
+    cv2.fillPoly(img, corners, color)
+
+
+def crop(image, contour, output_fname):
+    image = add_alpha(image)
+    mask = np.zeros(image.shape, dtype=np.uint8)
 
     # fill the ROI so it doesn't get wiped out when the mask is applied
     channel_count = image.shape[2]  # i.e. 3 or 4 depending on your image
     ignore_mask_color = (255,) * channel_count
-    cv2.fillPoly(mask, corners, ignore_mask_color)
+    fill(mask, contour, ignore_mask_color)
 
     # apply the mask
     masked_image = cv2.bitwise_and(image, mask)
@@ -53,6 +58,7 @@ def crop(image, contour, output_fname):
 
 
 def extract_wheels(image, circles):
+    image = image.copy()
     # ensure at least some circles were found
     if circles is not None:
         # convert the (x, y) coordinates and radius of the circles to integers
@@ -83,10 +89,17 @@ def extract_wheels(image, circles):
                     max_approx = (approx, area)
 
             approx = max_approx[0]
-            approx = resize_contour(approx, 1.05)
+            approx = resize_contour(approx, 1.1)
             contour_list.append(approx)
-
             crop(cropped_image, approx, 'wheel_{}.png'.format(j))
+
+            for i in range(approx.shape[0]):
+                approx[i, 0, 0] += x - radius
+                approx[i, 0, 1] += y - radius
+            fill(image, approx, (255, 255, 255))
+
+
+    cv2.imwrite('car_without_wheels.png', image)
 
 
 def graph(orig_image, image, circles):
