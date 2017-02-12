@@ -25,6 +25,15 @@ with open('labels/lights.txt', 'rU') as inputfile:  # whatever he called it
 directory = 'train'  ##whatever place the png are in
 
 
+def is_blank(img):
+    for x in range(img.shape[0]):
+        for y in range(img.shape[1]):
+            for channel in range(3):
+                if img[x][y][channel] != 255:
+                    return False
+    return True
+
+
 def in_box(point, box):
     return box[0] <= point[0] <= box[2] and box[1] <= point[1] <= box[3]
 
@@ -56,8 +65,10 @@ def wheelFinder(square):
                 generated_i += 1
 
                 # don't save every False image
-                if check or random.randint(0, 100) == 0:
-                    cv2.imwrite(os.path.join(output_dir, '{}_file{}.png'.format(check, generated_i)), cropped)
+                #blank = is_blank(img)
+                #print(blank)
+                if check or random.randint(0, 300) == 0:
+                    cv2.imwrite(os.path.join(output_dir, 'file{}_{}.png'.format(generated_i, check)), cropped)
 
 
 for z in range(30, 100, 30):
