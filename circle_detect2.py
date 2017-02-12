@@ -74,7 +74,7 @@ def flood_fill(img, seed, color):
     cv2.floodFill(img, blank_image, seed, color)
 
 
-def extract_wheels(image, circles):
+def extract_wheels(image, circles, output_index=0):
     image = image.copy()
     # ensure at least some circles were found
     if circles is not None:
@@ -110,7 +110,7 @@ def extract_wheels(image, circles):
             approx = max_approx[0]
             approx = resize_contour(approx, 1.1)
             contour_list.append(approx)
-            crop(cropped_image, approx, 'wheel_{}.png'.format(j))
+            crop(cropped_image, approx, 'wheel_{}_{}.png'.format(j, output_index))
 
             for i in range(approx.shape[0]):
                 approx[i, 0, 0] += x - radius
@@ -133,7 +133,7 @@ def extract_wheels(image, circles):
         fill(image, approxims[0], (255, 255, 255))
         fill(image, approxims[1], (255, 255, 255))
 
-    cv2.imwrite('car_without_wheels.png', image)
+    cv2.imwrite('car_without_wheels_{}.png'.format(output_index), image)
 
 
 def graph(orig_image, image, circles):
@@ -204,6 +204,23 @@ def filter(circles):
         return circles
 
 
+def process_image(image, output_index):
+    output = image.copy()
+    gray = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
+
+    # detect circles in the image
+    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1.3, 250, param2=70)
+
+    if circles is None:
+        return
+
+    circles = circles[0]
+
+    circles = filter(circles)
+
+    extract_wheels(image, circles, output_index)
+
+
 def validate_using_params(images, labels, param1, param2, param3, show_graph):
     correct = 0
 
@@ -225,8 +242,6 @@ def validate_using_params(images, labels, param1, param2, param3, show_graph):
 
         if show_graph and circles is not None:
             graph(image, output, circles)
-
-        extract_wheels(image, circles)
 
         # print(len(circles))
 
@@ -271,8 +286,8 @@ images = []
 labels = []
 
 # only look at ones that work for now
-# keep_indexes = [3, 6, 8, 11, 12, 14, 17, 20, 24, 28, 32, 33, 37, 38, 40, 42, 48, 51, 52, 61]
-keep_indexes = [48]
+keep_indexes = [3, 6, 8, 11, 12, 14, 17, 20, 24, 28, 32, 33, 37, 38, 40, 42, 48, 51, 52, 61]
+#keep_indexes = [48]
 for i in range(len(orig_images)):
     if i in keep_indexes:
         images.append(orig_images[i])
@@ -308,4 +323,5 @@ def optimize():
 
 # optimize()
 
-print(validate_using_params(images, labels, 1.3, 250, 70, False))
+for i, img in enumerate(images):
+    process_image(img, i)
