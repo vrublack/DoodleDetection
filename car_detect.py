@@ -68,6 +68,11 @@ def crop(image, contour, output_fname):
     # apply the mask
     masked_image = cv2.bitwise_and(image, mask)
 
+    # make quadratic
+    if masked_image.shape[0] != masked_image.shape[1]:
+        new_dim = min(masked_image.shape[0], masked_image.shape[1])
+        masked_image = masked_image[:new_dim, :new_dim]
+
     # save the result
     cv2.imwrite(output_fname, masked_image)
     with open(output_fname + '_.info', 'w') as info:
