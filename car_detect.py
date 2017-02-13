@@ -264,7 +264,7 @@ def make_gif():
 
 
 def to_imgs(body, wheel1, wheel1_center, wheel1_offset, wheel2, wheel2_center, wheel2_offset):
-    iterations = 25
+    iterations = 100
     for i in range(iterations):
         wheel1_rot = rotateImage(wheel1, wheel1_center, 1000 / iterations * i)
         wheel2_rot = rotateImage(wheel2, wheel2_center, 1000 / iterations * i)
